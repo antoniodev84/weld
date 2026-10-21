@@ -20,6 +20,13 @@ static void weld_close(weld_handle h) { dlclose(h); }
 static const char *weld_err(void) { return dlerror(); }
 #endif
 
+#ifdef _WIN32
+#define WELD_PATH_SEP ';'
+#define WELD_LIB_EXT ".dll"
+#else
+#define WELD_PATH_SEP ':'
+#define WELD_LIB_EXT ".so"
+#endif
 typedef struct {
     WeldModule *mod;
     weld_handle handle;
@@ -175,4 +182,77 @@ size_t weld_module_count(const WeldCore *core) {
 const char *weld_module_name(const WeldCore *core, size_t index) {
     if (!core || index >= core->count) return NULL;
     return core->entries[index].mod->name;
+}
+WeldModule *weld_get_module(WeldCore *core, size_t index) {
+    if (!core || index >= core->count) return NULL;
+    return core->entries[index].mod;
+}
+static char g_weld_path[4096];
+static int  g_weld_path_init = 0;
+
+const char *weld_get_path(void) {
+    if (!g_weld_path_init) {
+        const char *env = getenv("WELD_PATH");
+        if (env && *env) {
+            snprintf(g_weld_path, sizeof(g_weld_path), "%s", env);
+        } else {
+#ifdef _WIN32
+            const char *home = getenv("USERPROFILE");
+#else
+            const char *home = getenv("HOME");
+#endif
+            if (home)
+                snprintf(g_weld_path, sizeof(g_weld_path),
+                         "%s/.local/lib/weld%c."
+                         , home, WELD_PATH_SEP);
+            else
+                g_weld_path[0] = '\0';
+        }
+        g_weld_path_init = 1;
+    }
+    return g_weld_path;
+}
+
+void weld_set_path(const char *path) {
+    if (!path) { g_weld_path[0] = '\0'; g_weld_path_init = 1; return; }
+    snprintf(g_weld_path, sizeof(g_weld_path), "%s", path);
+    g_weld_path_init = 1;
+}
+
+static int weld_file_exists(const char *p) {
+    FILE *f = fopen(p, "rb");
+    if (!f) return 0;
+    fclose(f);
+    return 1;
+}
+
+int weld_load_named(WeldCore *core, const char *name) {
+    if (!core || !name) return -1;
+
+    if (strchr(name, '/') || strchr(name, '\\') || strchr(name, '.'))
+        return weld_load(core, name);
+
+    const char *paths = weld_get_path();
+    if (!paths || !*paths) return weld_load(core, name);
+
+    char candidate[4096];
+    const char *start = paths;
+
+    while (*start) {
+        const char *end = start;
+        while (*end && *end != WELD_PATH_SEP) end++;
+        size_t dirlen = (size_t)(end - start);
+
+        if (dirlen > 0 && dirlen < sizeof(candidate) - 256) {
+            snprintf(candidate, sizeof(candidate),
+                     "%.*s/%s%s", (int)dirlen, start, name, WELD_LIB_EXT);
+            if (weld_file_exists(candidate))
+                return weld_load(core, candidate);
+        }
+
+        if (*end == WELD_PATH_SEP) end++;
+        start = end;
+    }
+
+    return weld_load(core, name);
 }

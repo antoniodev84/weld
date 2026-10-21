@@ -9,9 +9,9 @@ ifeq ($(UNAME_S),Linux)
 endif
 
 LIB  := libweld.a
-OBJ  := weld.o
+OBJ  := weld.o weld_utils.o
 
-.PHONY: all clean install uninstall
+.PHONY: all clean install uninstall test
 
 all: $(LIB)
 
@@ -21,15 +21,27 @@ $(LIB): $(OBJ)
 weld.o: weld.c weld.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
+weld_utils.o: weld_utils.c weld_utils.h weld.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
 install: $(LIB)
 	install -d $(DESTDIR)$(PREFIX)/lib
 	install -d $(DESTDIR)$(PREFIX)/include
-	install -m 644 $(LIB)  $(DESTDIR)$(PREFIX)/lib/
-	install -m 644 weld.h  $(DESTDIR)$(PREFIX)/include/
+	install -m 644 $(LIB)         $(DESTDIR)$(PREFIX)/lib/
+	install -m 644 weld.h         $(DESTDIR)$(PREFIX)/include/
+	install -m 644 weld_utils.h   $(DESTDIR)$(PREFIX)/include/
 
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/lib/$(LIB)
 	rm -f $(DESTDIR)$(PREFIX)/include/weld.h
+	rm -f $(DESTDIR)$(PREFIX)/include/weld_utils.h
+
+test: $(LIB)
+	$(MAKE) -C tests
+examples: $(LIB)
+	$(MAKE) -C examples/app
 
 clean:
 	rm -f $(OBJ) $(LIB)
+	$(MAKE) -C tests clean
+	$(MAKE) -C examples/app clean

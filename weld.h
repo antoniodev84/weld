@@ -41,7 +41,11 @@ size_t weld_module_count(const WeldCore *core);
 const char *weld_module_name(const WeldCore *core, size_t index);
 
 void weld_set_error_handler(void (*fn)(const char *msg));
+WeldModule *weld_get_module(WeldCore *core, size_t index);
+const char *weld_get_path(void);
+void        weld_set_path(const char *path);
 
+int weld_load_named(WeldCore *core, const char *name);
 #ifdef __cplusplus
 }
 #endif

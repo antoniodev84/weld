@@ -17,8 +17,8 @@ int main(int argc, char **argv) {
     weld_set_error_handler(on_err);
 
     WeldCore *core = weld_create();
-    if (weld_load(core, "./modules/io.so") != 0) { weld_destroy_core(core); return 1; }
-    if (weld_load(core, "./modules/fs.so") != 0) { weld_destroy_core(core); return 1; }
+    if (weld_load_named(core, "io") != 0) { weld_destroy_core(core); return 1; }
+    if (weld_load_named(core, "fs") != 0) { weld_destroy_core(core); return 1; }
     if (weld_boot(core) != 0) { weld_destroy_core(core); return 1; }
 
     if (argc < 2) { usage(); weld_shutdown(core); weld_destroy_core(core); return 1; }

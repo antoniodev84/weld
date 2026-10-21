@@ -29,4 +29,3 @@ run: all
 
 clean:
 	rm -f $(APP) $(MODULES)
-	$(MAKE) -C $(WELD) clean
